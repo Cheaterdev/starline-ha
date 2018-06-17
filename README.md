@@ -21,5 +21,5 @@ Configuration variables:
 - **password** (*Required*): Your login password
 - **interval_seconds** (*Optional*): Time to refresh data
 
-#Device naming
+# Device naming
  - starline_**IMEI**
