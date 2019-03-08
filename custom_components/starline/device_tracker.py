@@ -4,6 +4,7 @@ import json
 import subprocess
 from collections import namedtuple
 from datetime import timedelta
+import time
 
 import voluptuous as vol
 import requests
@@ -23,7 +24,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 def setup_scanner(hass, config: dict, see, discovery_info=None):
-    """Validate the configuration and return a Starline scanner."""
     StarlineScanner(hass, config, see)
     return True
 
@@ -32,17 +32,25 @@ class StarlineScanner(object):
     exclude = []
 
     def __init__(self, hass, config: dict, see):
-        """Initialize the scanner."""
-        self.s = requests.Session() 
+   
         self.see = see
         self.hass = hass
         _LOGGER.debug("Init called")
-        
-        url = 'https://starline-online.ru/user/login'
-        payload = {'LoginForm[login]': config.get(CONF_USERNAME), 'LoginForm[rememberMe]': 'on', 'LoginForm[pass]':config.get(CONF_PASSWORD)}
-        response = self.s.post(url, data=payload)
+        while True:
+            self.s = requests.Session() 
+            try:
+                url = 'https://starline-online.ru/user/login'
+                payload = {'LoginForm[login]': config.get(CONF_USERNAME), 'LoginForm[rememberMe]': 'on', 'LoginForm[pass]':config.get(CONF_PASSWORD)}
+                response = self.s.post(url, data=payload)
+                data = dump.dump_all(response)
 
-        self.success_init = self._update_info()  
+                self.success_init = self._update_info() 
+                break
+            except Exception as e:
+                _LOGGER.error("STARLINE error: "  + str(e))
+             #   time.sleep(5)
+                break
+       
         track_utc_time_change(
             self.hass, self._update_info, minute=range(0, 60, 5))
 
@@ -52,6 +60,7 @@ class StarlineScanner(object):
     
         response = self.s.get(url, params=payload)
         data = response.json()
+        response.close()
 
         for device in data['answer']['devices']:
 
@@ -61,11 +70,12 @@ class StarlineScanner(object):
 
             dev_id = device['device_id']
             attrs = {
-    
+                'ctemp': device['ctemp'],
+				'etemp': device['etemp']
             }
 
             self.see(
                     dev_id="starline_" + str(dev_id), gps=(y, x), attributes=attrs
                 )
-        _LOGGER.debug("Update_info successful")
+
         return True
