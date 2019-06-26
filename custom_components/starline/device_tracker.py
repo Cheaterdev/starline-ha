@@ -59,6 +59,7 @@ class StarlineScanner(object):
    
         response = self.s.get(url, params=payload)
         data = response.json()
+        _LOGGER.debug("Response: "  + json.dumps(data))
         response.close()
         
         for device in data['answer']['devices']:
@@ -69,6 +70,7 @@ class StarlineScanner(object):
 
             url = 'https://starline-online.ru/deviceSettings/settings?formId=can&deviceId='+str(dev_id)
             response = self.s.get(url, params=payload)
+            
             can_data = response.json()
 
             attrs = { }
@@ -89,6 +91,7 @@ class StarlineScanner(object):
 
             if 'desc' in can_data:
                 desc = can_data['desc']
+                _LOGGER.debug("Found desc: "  + json.dumps(desc))
                 if 'fuel' in desc:
                     attrs.update({'fuel': desc['fuel']['val']})
                 if 'mileage' in desc:
@@ -96,12 +99,15 @@ class StarlineScanner(object):
 
             if 'car_state' in device:
                 states = device['car_state']
-                attrs.update({ ("state_"+k): v for k, v in states.items() })
+                _LOGGER.debug("Found states: "  + json.dumps(states))
+                if states:
+                    attrs.update({ ("state_"+k): v for k, v in states.items() })
             
-
             if 'car_alr_state' in device:
                 alarm_states = device['car_alr_state']
-                attrs.update({ ("alarm_state_"+k): v for k, v in alarm_states.items() })
+                _LOGGER.debug("Found alarm states: "  + json.dumps(states))
+                if alarm_states:
+                    attrs.update({ ("alarm_state_"+k): v for k, v in alarm_states.items() })
            
             self.see(
                     dev_id="starline_" + str(dev_id), gps=(y, x), attributes=attrs
