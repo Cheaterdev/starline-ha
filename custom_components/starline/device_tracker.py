@@ -32,10 +32,9 @@ class StarlineScanner(object):
     exclude = []
 
     def __init__(self, hass, config: dict, see):
-   
         self.see = see
         self.hass = hass
-        _LOGGER.debug("Init called")
+
         while True:
             self.s = requests.Session() 
             try:
@@ -47,8 +46,8 @@ class StarlineScanner(object):
                 self.success_init = self._update_info() 
                 break
             except Exception as e:
-                _LOGGER.error("STARLINE error: "  + str(e))
-             #   time.sleep(5)
+                _LOGGER.error("error: "  + str(e))
+                time.sleep(5)
                 break
        
         track_utc_time_change(
@@ -57,23 +56,53 @@ class StarlineScanner(object):
     def _update_info(self, now=None):
         url = 'https://starline-online.ru/device'
         payload = {'tz': 180}
-    
+   
         response = self.s.get(url, params=payload)
         data = response.json()
         response.close()
-
+        
         for device in data['answer']['devices']:
-
             x = device['position']['x']
             y = device['position']['y']
-            ts = device['position']['ts']
 
             dev_id = device['device_id']
-            attrs = {
-                'ctemp': device['ctemp'],
-				'etemp': device['etemp']
-            }
 
+            url = 'https://starline-online.ru/deviceSettings/settings?formId=can&deviceId='+str(dev_id)
+            response = self.s.get(url, params=payload)
+            can_data = response.json()
+
+            attrs = { }
+            
+            if 'ctemp' in device:
+                attrs.update({'climate_temp': device['ctemp']})
+
+            if 'etemp' in device:
+                attrs.update({'engine_temp': device['etemp']})
+
+            if 'battery' in device:
+                attrs.update({'battery': device['battery']})
+
+            if 'balance' in device:
+                if 'active' in device['balance']:
+                    if 'value' in device['balance']['active']:
+                        attrs.update({'balance': device['balance']['active']['value']})
+
+            if 'desc' in can_data:
+                desc = can_data['desc']
+                if 'fuel' in desc:
+                    attrs.update({'fuel': desc['fuel']['val']})
+                if 'mileage' in desc:
+                    attrs.update({'mileage': desc['mileage']['val']})
+
+            if 'car_state' in device:
+                states = device['car_state']
+                attrs.update({ ("state_"+k): v for k, v in states.items() })
+            
+
+            if 'car_alr_state' in device:
+                alarm_states = device['car_alr_state']
+                attrs.update({ ("alarm_state_"+k): v for k, v in alarm_states.items() })
+           
             self.see(
                     dev_id="starline_" + str(dev_id), gps=(y, x), attributes=attrs
                 )
