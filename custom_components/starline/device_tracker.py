@@ -11,16 +11,19 @@ import requests
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
 from homeassistant.components.device_tracker import PLATFORM_SCHEMA
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
+from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_SCAN_INTERVAL
 
 from homeassistant.util import Throttle
 from requests_toolbelt.utils import dump
 _LOGGER = logging.getLogger(__name__)
-from homeassistant.helpers.event import track_utc_time_change
+from homeassistant.helpers.event import async_track_time_interval
 
+DEFAULT_INTERVAL = timedelta(minutes=5)
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_USERNAME): cv.string,
-    vol.Required(CONF_PASSWORD): cv.string
+    vol.Required(CONF_PASSWORD): cv.string,
+    vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_INTERVAL):
+        vol.All(cv.time_period, cv.positive_timedelta),
 })
 
 def setup_scanner(hass, config: dict, see, discovery_info=None):
@@ -50,8 +53,9 @@ class StarlineScanner(object):
                 time.sleep(5)
                 break
        
-        track_utc_time_change(
-            self.hass, self._update_info, minute=range(0, 60, 5))
+        self._update_info()
+        async_track_time_interval(self.hass, self._update_info, config.get(CONF_SCAN_INTERVAL))
+       
 
     def _update_info(self, now=None):
         url = 'https://starline-online.ru/device'
