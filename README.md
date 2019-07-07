@@ -1,3 +1,6 @@
+# NEW: Starline integration through official API:
+https://github.com/Cheaterdev/starline_api-ha
+----------------------------
 # starline-ha
 Starline device tracker for Home Assistant
 
@@ -17,8 +20,8 @@ device_tracker:
 ```
 
 Configuration variables:
-- **username** (*Required*): Your login username
-- **password** (*Required*): Your login password
+- **username** (*Required*): Your Starline username
+- **password** (*Required*): Your Starline password
 - **scan_interval** (*Optional*): Time to refresh data
 
 # Device naming
